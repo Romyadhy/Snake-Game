@@ -18,7 +18,7 @@ A simple, modern Snake game implemented in a single HTML file. Play directly in 
 1. **Clone or Download**
    - Download this repository or clone it:
      ```sh
-     git clone https://github.com/yourusername/snake-game.git
+     git clone https://github.com/Romyadhy/Snake-Game
      ```
 
 2. **Open the Game**
@@ -48,4 +48,8 @@ Made with ❤️ as a single-file HTML game.
 
 ---
 
-Feel free
+Feel free to fork, modify, or share!
+
+---
+
+Stay code, no enemies🫡
