@@ -1,6 +1,7 @@
 # Snake Game (Single HTML File)
 
-A simple, modern Snake game implemented in a single HTML file. Play directly in your browser—no dependencies required!
+A simple, modern Snake game implemented in a single HTML file. Play directly in your browser—no dependencies required! 
+Here's the demo: https://snake-game-keren.vercel.app/snake.html 
 
 ## Features
 
