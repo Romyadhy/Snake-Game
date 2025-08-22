@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Snake Game with Modes & High Score</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    body{
+      margin:0;
+      height:100vh;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      background:#0b1220;
+      font-family:sans-serif;
+      color:white;
+    }
+    .container{
+      display:flex;
+      gap:20px;
+      padding:20px;
+      background:rgba(255,255,255,0.05);
+      border-radius:12px;
+    }
+    canvas{
+      background:#071226;
+      border-radius:8px;
+    }
+    .panel{
+      width:200px;
+    }
+    .panel h1{
+      margin:0 0 10px;
+      font-size:20px;
+      color:#22c55e;
+    }
+    .row{display:flex;justify-content:space-between;margin:8px 0;}
+    .big{font-size:24px;font-weight:bold}
+    button, select{
+      width:100%;
+      padding:10px;
+      border:0;
+      border-radius:8px;
+      background:#22c55e;
+      color:#042014;
+      font-weight:bold;
+      cursor:pointer;
+      margin-top:10px;
+    }
+    select{
+      background:#1e293b;
+      color:white;
+      margin-bottom:10px;
+    }
+    .msg{margin-top:10px;font-size:14px;display:none;text-align:center}
+    .msg.show{display:block;}
+    .danger{color:#ef4444;}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <canvas id="gameCanvas" width="600" height="400"></canvas>
+    <div class="panel">
+      <h1>Snake</h1>
+
+      <div class="row">
+        <div>Score</div>
+        <div id="score" class="big">0</div>
+      </div>
+
+      <div class="row">
+        <div>High</div>
+        <div id="highScore" class="big">0</div>
+      </div>
+
+      <label for="mode">Mode:</label>
+      <select id="mode">
+        <option value="easy">Easy</option>
+        <option value="medium" selected>Medium</option>
+        <option value="hard">Hard</option>
+      </select>
+
+      <button id="startBtn">Start / Restart</button>
+
+      <div id="message" class="msg danger">Game Over</div>
+    </div>
+  </div>
+
+<script>
+(function(){
+  const canvas = document.getElementById('gameCanvas');
+  const ctx = canvas.getContext('2d');
+  const CELL_SIZE = 20;
+  const COLS = canvas.width / CELL_SIZE;
+  const ROWS = canvas.height / CELL_SIZE;
+
+  // UI
+  const scoreEl = document.getElementById('score');
+  const highScoreEl = document.getElementById('highScore');
+  const startBtn = document.getElementById('startBtn');
+  const messageEl = document.getElementById('message');
+  const modeSel = document.getElementById('mode');
+
+  // Game state
+  let snake = [];
+  let dir = {x:1, y:0};
+  let nextDir = {x:1, y:0};
+  let food = null;
+  let score = 0;
+  let highScore = parseInt(localStorage.getItem('snakeHighScore') || "0");
+  highScoreEl.textContent = highScore;
+  let tickTimer = null;
+  let running = false;
+
+  // Mode settings
+  const MODES = {
+    easy:   { speed:150, startLen:4, foodChance:1.0 },
+    medium: { speed:100, startLen:5, foodChance:0.9 },
+    hard:   { speed:60,  startLen:7, foodChance:0.75 }
+  };
+  let currentMode = MODES.medium;
+
+  function initSnake(){
+    const startX = Math.floor(COLS/2);
+    const startY = Math.floor(ROWS/2);
+    snake = [];
+    for(let i=0;i<currentMode.startLen;i++){
+      snake.push({x:startX-i, y:startY});
+    }
+    dir = {x:1,y:0};
+    nextDir = {x:1,y:0};
+  }
+
+  function spawnFood(){
+    if(Math.random()>currentMode.foodChance){
+      food = null; // no food this round
+      return;
+    }
+    while(true){
+      const fx = Math.floor(Math.random()*COLS);
+      const fy = Math.floor(Math.random()*ROWS);
+      if(!snake.some(s=>s.x===fx && s.y===fy)){
+        food={x:fx,y:fy};return;
+      }
+    }
+  }
+
+  function startGame(){
+    clearInterval(tickTimer);
+    currentMode = MODES[modeSel.value];
+    score=0;
+    scoreEl.textContent=score;
+    messageEl.classList.remove("show");
+    initSnake();
+    spawnFood();
+    running=true;
+    tickTimer=setInterval(gameTick, currentMode.speed);
+  }
+
+  function gameTick(){
+    dir=nextDir;
+    const newHead={x:snake[0].x+dir.x,y:snake[0].y+dir.y};
+
+    // Wall collision
+    if(newHead.x<0||newHead.x>=COLS||newHead.y<0||newHead.y>=ROWS){
+      endGame();return;
+    }
+    // Self collision
+    if(snake.some(s=>s.x===newHead.x&&s.y===newHead.y)){
+      endGame();return;
+    }
+
+    snake.unshift(newHead);
+
+    if(food && newHead.x===food.x&&newHead.y===food.y){
+      score++;
+      scoreEl.textContent=score;
+      if(score>highScore){
+        highScore=score;
+        localStorage.setItem('snakeHighScore', highScore);
+        highScoreEl.textContent=highScore;
+      }
+      spawnFood();
+    }else{
+      snake.pop();
+      // If no food exists, try to spawn again occasionally
+      if(!food && Math.random()<0.2){
+        spawnFood();
+      }
+    }
+    render();
+  }
+
+  function endGame(){
+    running=false;
+    clearInterval(tickTimer);
+    messageEl.textContent="Game Over!";
+    messageEl.classList.add("show");
+  }
+
+  function render(){
+    ctx.fillStyle="#071226";
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+
+    // draw food
+    if(food){
+      ctx.fillStyle="red";
+      ctx.fillRect(food.x*CELL_SIZE, food.y*CELL_SIZE, CELL_SIZE, CELL_SIZE);
+    }
+    // draw snake
+    ctx.fillStyle="lime";
+    snake.forEach((s)=>{
+      ctx.fillRect(s.x*CELL_SIZE, s.y*CELL_SIZE, CELL_SIZE, CELL_SIZE);
+    });
+  }
+
+  window.addEventListener('keydown', e=>{
+    const key=e.key;
+    let intended=null;
+    if(key==="ArrowUp")intended={x:0,y:-1};
+    if(key==="ArrowDown")intended={x:0,y:1};
+    if(key==="ArrowLeft")intended={x:-1,y:0};
+    if(key==="ArrowRight")intended={x:1,y:0};
+    if(!intended)return;
+
+    // disallow reverse
+    if(intended.x===-dir.x&&intended.y===-dir.y)return;
+    nextDir=intended;
+    e.preventDefault();
+  });
+
+  startBtn.addEventListener('click', startGame);
+
+  // Initial render
+  initSnake();
+  spawnFood();
+  render();
+})();
+</script>
+</body>
+</html>

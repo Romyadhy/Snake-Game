@@ -105,6 +105,22 @@
         <div id="score" class="big">0</div>
       </div>
 
+      <!-- High Score row (NEW) -->
+      <div class="row">
+        <div class="muted">High Score</div>
+        <div id="highScore" class="big">0</div>
+      </div>
+
+      <div class="row">
+        <div class="muted">Mode</div>
+        <!-- Mode selector (NEW) -->
+        <select id="modeSelect" style="background:var(--panel);color:white;border-radius:6px;padding:4px;">
+          <option value="easy">Easy</option>
+          <option value="medium" selected>Medium</option>
+          <option value="hard">Hard</option>
+        </select>
+      </div>
+
       <div class="row">
         <div class="muted">Speed</div>
         <div id="speedLabel" class="muted">Normal</div>
@@ -134,6 +150,8 @@
    * - Game over on wall or self-collision
    * - Random food spawn not overlapping snake
    * - Start/Restart button and score display
+   * - High score tracking (NEW)
+   * - Mode selector: Easy, Medium, Hard (NEW)
    ****************************************************************/
 
   (function(){
@@ -147,9 +165,17 @@
     const ROWS = Math.floor(canvas.height / CELL_SIZE);
 
     // Game timing
-    const BASE_TICK_MS = 100;          // Base tick in milliseconds (smaller == faster)
-    let tickInterval = BASE_TICK_MS;   // current tick interval (can be adjusted for speed)
-    let tickTimer = null;              // reference to interval timer
+    // Mode settings (NEW)
+    const MODES = {
+      easy:   { name: 'Easy',   tick: 140 },
+      medium: { name: 'Medium', tick: 100 },
+      hard:   { name: 'Hard',   tick: 60 }
+    };
+    let currentMode = 'medium'; // default mode
+
+    let BASE_TICK_MS = MODES[currentMode].tick; // Use mode tick
+    let tickInterval = BASE_TICK_MS;
+    let tickTimer = null;
 
     // Game state
     let snake = [];                    // array of {x,y} positions (head is first element)
@@ -160,11 +186,27 @@
     let running = false;
     let gameOver = false;
 
+    // High score (NEW)
+    let highScore = 0;
+
     // UI elements
     const scoreEl = document.getElementById('score');
+    const highScoreEl = document.getElementById('highScore'); // NEW
     const restartBtn = document.getElementById('restartBtn');
     const messageEl = document.getElementById('message');
     const speedLabel = document.getElementById('speedLabel');
+    const modeSelect = document.getElementById('modeSelect'); // NEW
+
+    // Load high score from localStorage (NEW)
+    function loadHighScore(){
+      highScore = parseInt(localStorage.getItem('snakeHighScore') || '0', 10);
+      highScoreEl.textContent = highScore;
+    }
+    // Save high score to localStorage (NEW)
+    function saveHighScore(){
+      localStorage.setItem('snakeHighScore', highScore);
+      highScoreEl.textContent = highScore;
+    }
 
     // Helper: create a new snake positioned around the center
     function initSnake(){
@@ -221,6 +263,7 @@
       // ensure canvas has focus so keyboard works immediately
       canvas.focus();
       updateSpeedLabel();
+      loadHighScore(); // NEW: update high score display
     }
 
     // Stop the game loop
@@ -266,6 +309,12 @@
         scoreEl.textContent = score;
         spawnFood();
 
+        // Update high score if needed (NEW)
+        if(score > highScore){
+          highScore = score;
+          saveHighScore();
+        }
+
         // Optionally, speed up slightly every few points (visual effect)
         if(score % 5 === 0 && tickInterval > 40){
           tickInterval = Math.max(40, Math.round(tickInterval * 0.9));
@@ -289,6 +338,7 @@
       stopGame();
       messageEl.textContent = 'Game Over — ' + reason + ' Press Start to play again.';
       messageEl.classList.add('show', 'danger');
+      // High score already updated in gameTick
     }
 
     // Render the entire scene
@@ -397,11 +447,18 @@
       startGame();
     });
 
-    // Speed label update
+    // Mode selector (NEW)
+    modeSelect.addEventListener('change', function(){
+      currentMode = modeSelect.value;
+      BASE_TICK_MS = MODES[currentMode].tick;
+      tickInterval = BASE_TICK_MS;
+      updateSpeedLabel();
+      startGame();
+    });
+
+    // Speed label update (MODIFIED)
     function updateSpeedLabel(){
-      if(tickInterval <= 50) speedLabel.textContent = 'Fast';
-      else if(tickInterval <= 90) speedLabel.textContent = 'Normal';
-      else speedLabel.textContent = 'Slow';
+      speedLabel.textContent = MODES[currentMode].name;
     }
 
     // Resize handling (optional): ensure crisp pixel rendering when resized by CSS
@@ -411,6 +468,10 @@
       ctx.imageSmoothingEnabled = false;
     }
     ensurePixelPerfect();
+
+    // Initial setup
+    loadHighScore(); // NEW
+    updateSpeedLabel();
 
     // Initial render to show something before starting
     initSnake();
